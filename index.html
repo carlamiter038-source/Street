@@ -1,0 +1,1347 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realistic 3D Fighter: VS Code vs GitHub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Teko:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #030712;
+            color: #fff;
+            user-select: none;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+        .title-font {
+            font-family: 'Teko', sans-serif;
+        }
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .text-glow-purple {
+            text-shadow: 0 0 10px #bc8cff, 0 0 20px #8957e5;
+        }
+        .text-glow-blue {
+            text-shadow: 0 0 10px #007acc, 0 0 20px #3794ff;
+        }
+        .text-glow-gold {
+            text-shadow: 0 0 10px #ffc93c, 0 0 20px #ffc93c;
+        }
+        .btn-arcade {
+            background: linear-gradient(180deg, #007acc 0%, #004777 100%);
+            border: 3px solid #fff;
+            box-shadow: 0 6px 0 #002642, 0 0 15px rgba(0, 122, 204, 0.6);
+            transition: all 0.1s ease;
+        }
+        .btn-arcade:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #002642;
+        }
+        .btn-purple {
+            background: linear-gradient(180deg, #8957e5 0%, #4c2889 100%);
+            border: 3px solid #fff;
+            box-shadow: 0 6px 0 #28134b, 0 0 15px rgba(137, 87, 229, 0.6);
+        }
+        .btn-purple:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #28134b;
+        }
+        /* Joysticks Virtuais */
+        .joystick-base {
+            width: 95px;
+            height: 95px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            position: relative;
+            touch-action: none;
+        }
+        .joystick-stick {
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 30% 30%, #38bdf8, #0284c7);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+        .joystick-stick-p2 {
+            background: radial-gradient(circle at 30% 30%, #c084fc, #7e22ce);
+        }
+        .action-btn {
+            touch-action: manipulation;
+            user-select: none;
+        }
+        .action-btn:active {
+            transform: scale(0.92);
+        }
+    </style>
+</head>
+<body class="bg-gray-950">
+
+    <div id="game-container">
+        <!-- Three.js Canvas Output -->
+        <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+        <!-- HUD Overlay -->
+        <div id="hud" class="absolute top-0 left-0 right-0 p-3 md:p-6 flex justify-between items-start z-10 pointer-events-none">
+            <!-- Player 1 Status (VS Code) -->
+            <div class="w-5/12 max-w-md flex flex-col items-start">
+                <div class="flex items-center space-x-2 mb-1">
+                    <span class="text-xs md:text-sm text-sky-400 text-glow-blue">P1: VS CODE</span>
+                    <span id="p1-wins" class="text-xs text-yellow-400"></span>
+                </div>
+                <div class="w-full h-5 md:h-7 bg-gray-900 border-2 border-white rounded-sm overflow-hidden p-0.5 relative shadow-lg">
+                    <div id="p1-health" class="h-full bg-gradient-to-r from-blue-700 via-sky-500 to-cyan-300 w-full transition-all duration-100"></div>
+                </div>
+                <div class="w-3/4 h-2 bg-gray-900 border border-gray-500 rounded-sm mt-1 overflow-hidden">
+                    <div id="p1-energy" class="h-full bg-cyan-400 w-full"></div>
+                </div>
+            </div>
+
+            <!-- Timer & Stage Display -->
+            <div class="flex flex-col items-center justify-center px-2">
+                <div id="timer" class="text-3xl md:text-5xl font-extrabold text-yellow-300 title-font tracking-wider text-glow-gold bg-black/70 px-4 py-1 rounded border border-yellow-500/40">60</div>
+                <div id="round-text" class="text-[9px] md:text-xs text-cyan-300 mt-1 uppercase font-bold tracking-widest bg-black/60 px-2 py-0.5 rounded">ROUND 1</div>
+            </div>
+
+            <!-- Player 2 Status (GitHub) -->
+            <div class="w-5/12 max-w-md flex flex-col items-end">
+                <div class="flex items-center space-x-2 mb-1">
+                    <span id="p2-wins" class="text-xs text-yellow-400"></span>
+                    <span class="text-xs md:text-sm text-purple-400 text-glow-purple">P2: GITHUB</span>
+                </div>
+                <div class="w-full h-5 md:h-7 bg-gray-900 border-2 border-white rounded-sm overflow-hidden p-0.5 relative shadow-lg">
+                    <div id="p2-health" class="h-full bg-gradient-to-l from-purple-700 via-purple-500 to-indigo-400 w-full transition-all duration-100"></div>
+                </div>
+                <div class="w-3/4 h-2 bg-gray-900 border border-gray-500 rounded-sm mt-1 overflow-hidden">
+                    <div id="p2-energy" class="h-full bg-purple-400 w-full"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Central Announcer Text Overlay -->
+        <div id="announcer" class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none hidden">
+            <h2 id="announcer-text" class="text-5xl md:text-8xl font-extrabold text-yellow-400 text-glow-gold italic tracking-widest title-font uppercase">
+                ROUND 1
+            </h2>
+        </div>
+
+        <!-- Start / Game Over Overlay -->
+        <div id="overlay" class="absolute inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center z-30 p-6 text-center">
+            <h1 id="overlay-title" class="text-4xl md:text-7xl text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-purple-400 to-pink-500 title-font font-bold tracking-widest mb-2 italic">
+                REALISTIC 3D FIGHTER: VS CODE vs GITHUB
+            </h1>
+            <p class="text-xs md:text-sm text-gray-300 mb-6 max-w-lg leading-relaxed">
+                Lutadores 3D realistas com proporções anatômicas humanas! Escolha o modo de jogo:
+            </p>
+
+            <div class="flex flex-wrap justify-center gap-4 mb-6">
+                <button id="btn-vs-ai" class="btn-arcade px-6 py-3 rounded text-sm md:text-base font-bold text-white tracking-wider">
+                    1 JOGADOR vs IA
+                </button>
+                <button id="btn-vs-p2" class="btn-purple px-6 py-3 rounded text-sm md:text-base font-bold text-white tracking-wider">
+                    2 JOGADORES (LOCAL)
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left bg-gray-900/90 p-4 border border-gray-700 rounded-lg text-[10px] md:text-xs max-w-2xl w-full">
+                <div class="border-b md:border-b-0 md:border-r border-gray-700 pb-2 md:pb-0 md:pr-4">
+                    <p class="text-sky-400 font-bold mb-1">CONTROLES TECLADO P1 (VS CODE):</p>
+                    <p>• A / D : Mover | W : Pular | S : Defender</p>
+                    <p>• F : Soco | G : Chute | H : Girar (Tatsumaki)</p>
+                    <p class="text-sky-300 font-bold">• J : MAGIA ("VS CODE!")</p>
+                </div>
+                <div class="md:pl-2">
+                    <p class="text-purple-400 font-bold mb-1">CONTROLES TECLADO P2 (GITHUB):</p>
+                    <p>• Setas ◄/►/▲/▼ : Mover / Pular / Defender</p>
+                    <p>• N : Soco | M : Chute | , : Girar (Tatsumaki)</p>
+                    <p class="text-purple-300 font-bold">• K : MAGIA ("GITHUB!")</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTROLES JOYSTICK/BOTÕES DA INTERFACE -->
+        <div class="absolute bottom-2 left-0 right-0 z-20 px-4 flex justify-between items-end pointer-events-none">
+            <!-- P1 CONTROLS -->
+            <div class="pointer-events-auto flex items-center gap-3 bg-slate-900/80 backdrop-blur-sm p-2 rounded-xl border border-sky-500/40 shadow-xl">
+                <div class="flex flex-col items-center">
+                    <span class="text-[9px] text-sky-400 font-bold mb-1">JOYSTICK P1</span>
+                    <div id="joy-base-p1" class="joystick-base flex items-center justify-center">
+                        <div id="joy-stick-p1" class="joystick-stick"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button id="btn-p1-punch" class="action-btn bg-blue-600 active:bg-blue-500 text-white text-[10px] md:text-xs font-bold py-2 px-2.5 rounded shadow border border-blue-400">SOCO (F)</button>
+                    <button id="btn-p1-kick" class="action-btn bg-cyan-600 active:bg-cyan-500 text-white text-[10px] md:text-xs font-bold py-2 px-2.5 rounded shadow border border-cyan-400">CHUTE (G)</button>
+                    <button id="btn-p1-spin" class="action-btn bg-amber-600 active:bg-amber-500 text-white text-[10px] md:text-xs font-bold py-2 px-2.5 rounded shadow border border-amber-400">GIRAR (H)</button>
+                    <button id="btn-p1-magic" class="action-btn bg-sky-500 active:bg-sky-400 text-white text-[10px] md:text-xs font-bold py-2 px-2.5 rounded shadow border-2 border-white animate-pulse">MAGIA (J)</button>
+                </div>
+            </div>
+
+            <!-- P2 CONTROLS -->
+            <div class="pointer-events-auto flex items-center gap-3 bg-slate-900/80 backdrop-blur-sm p-2 rounded-xl border border-purple-500/40 shadow-xl">
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button id="btn-p2-punch" class="action-btn bg-purple-700 active:bg-purple-600 text-white text-[10px] md:text-xs font-bold py-2 px-2.5 rounded shadow border border-purple-400">SOCO (N)</button>
+                    <button id="btn-p2-kick" class="action-btn bg-fuchsia-700 active:bg-fuchsia-600 text-white text-[10px] md:text-xs font-bold py-2 px-2.5 rounded shadow border border-fuchsia-400">CHUTE (M)</button>
+                    <button id="btn-p2-spin" class="action-btn bg-amber-600 active:bg-amber-500 text-white text-[10px] md:text-xs font-bold py-2 px-2.5 rounded shadow border border-amber-400">GIRAR (,)</button>
+                    <button id="btn-p2-magic" class="action-btn bg-purple-500 active:bg-purple-400 text-white text-[10px] md:text-xs font-bold py-2 px-2.5 rounded shadow border-2 border-white animate-pulse">MAGIA (K)</button>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-[9px] text-purple-400 font-bold mb-1">JOYSTICK P2</span>
+                    <div id="joy-base-p2" class="joystick-base flex items-center justify-center">
+                        <div id="joy-stick-p2" class="joystick-stick joystick-stick-p2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- SOUND & SPEECH SYNTHESIS ---
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playHit() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+            playSpinSound() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(250, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(650, this.ctx.currentTime + 0.35);
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.35);
+            }
+            playMagicSound(type) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type === 'vscode' ? 'square' : 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(950, this.ctx.currentTime + 0.25);
+                osc.frequency.exponentialRampToValueAtTime(200, this.ctx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.5);
+            }
+            speak(text, pitch = 1.0, rate = 1.1) {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.lang = 'en-US';
+                    utter.pitch = pitch;
+                    utter.rate = rate;
+                    utter.volume = 1.0;
+                    window.speechSynthesis.speak(utter);
+                }
+            }
+        }
+        const sfx = new SoundFX();
+
+        // --- THREE.JS ENGINE SETUP ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 4.5, 22);
+        camera.lookAt(0, 3.5, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
+        container.appendChild(renderer.domElement);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Iluminação Principal
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(12, 24, 16);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 60;
+        dirLight.shadow.camera.left = -25;
+        dirLight.shadow.camera.right = 25;
+        dirLight.shadow.camera.top = 25;
+        dirLight.shadow.camera.bottom = -10;
+        scene.add(dirLight);
+
+        // Rim Light para Destaque Realista dos Lutadores
+        const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.8);
+        rimLight.position.set(-10, 15, -15);
+        scene.add(rimLight);
+
+        // --- GAME VARIABLES ---
+        let gameMode = 'AI';
+        let gameRunning = false;
+        let roundTime = 60;
+        let currentRound = 1;
+        let p1RoundsWon = 0;
+        let p2RoundsWon = 0;
+        let timerInterval = null;
+
+        const overlay = document.getElementById('overlay');
+        const p1HealthEl = document.getElementById('p1-health');
+        const p2HealthEl = document.getElementById('p2-health');
+        const p1EnergyEl = document.getElementById('p1-energy');
+        const p2EnergyEl = document.getElementById('p2-energy');
+        const timerEl = document.getElementById('timer');
+        const roundTextEl = document.getElementById('round-text');
+        const announcerEl = document.getElementById('announcer');
+        const announcerTextEl = document.getElementById('announcer-text');
+        const p1WinsEl = document.getElementById('p1-wins');
+        const p2WinsEl = document.getElementById('p2-wins');
+
+        const keys = {};
+        window.addEventListener('keydown', e => { keys[e.key] = true; keys[e.key.toLowerCase()] = true; });
+        window.addEventListener('keyup', e => { keys[e.key] = false; keys[e.key.toLowerCase()] = false; });
+
+        // --- STAGE BUILDER ---
+        let currentStageGroup = new THREE.Group();
+        scene.add(currentStageGroup);
+
+        function buildStage(roundNum) {
+            while (currentStageGroup.children.length > 0) {
+                const obj = currentStageGroup.children[0];
+                currentStageGroup.remove(obj);
+            }
+
+            const stageIndex = (roundNum - 1) % 3;
+
+            if (stageIndex === 0) {
+                // ROUND 1: CYBERPUNK CITY
+                scene.background = new THREE.Color(0x050714);
+                scene.fog = new THREE.FogExp2(0x050714, 0.018);
+
+                const floorGeo = new THREE.PlaneGeometry(70, 40);
+                const floorMat = new THREE.MeshStandardMaterial({ color: 0x0a0f1d, roughness: 0.15, metalness: 0.85 });
+                const floor = new THREE.Mesh(floorGeo, floorMat);
+                floor.rotation.x = -Math.PI / 2;
+                floor.receiveShadow = true;
+                currentStageGroup.add(floor);
+
+                const grid = new THREE.GridHelper(70, 35, 0x007acc, 0x8957e5);
+                grid.position.y = 0.01;
+                currentStageGroup.add(grid);
+
+                for (let i = -5; i <= 5; i++) {
+                    if (Math.abs(i) < 2) continue;
+                    const h = 18 + Math.random() * 22;
+                    const bGeo = new THREE.BoxGeometry(7, h, 7);
+                    const bMat = new THREE.MeshStandardMaterial({
+                        color: 0x090d18,
+                        emissive: i % 2 === 0 ? 0x003366 : 0x2e0854,
+                        emissiveIntensity: 0.4
+                    });
+                    const b = new THREE.Mesh(bGeo, bMat);
+                    b.position.set(i * 10, h / 2, -16 - Math.random() * 6);
+                    currentStageGroup.add(b);
+                }
+
+            } else if (stageIndex === 1) {
+                // ROUND 2: SUNSET DOJO
+                scene.background = new THREE.Color(0x7c2d12);
+                scene.fog = new THREE.FogExp2(0x7c2d12, 0.014);
+
+                const floorGeo = new THREE.PlaneGeometry(70, 40);
+                const floorMat = new THREE.MeshStandardMaterial({ color: 0x6b21a8, roughness: 0.5 });
+                const floor = new THREE.Mesh(floorGeo, floorMat);
+                floor.rotation.x = -Math.PI / 2;
+                floor.receiveShadow = true;
+                currentStageGroup.add(floor);
+
+                const sunGeo = new THREE.SphereGeometry(14, 32, 32);
+                const sunMat = new THREE.MeshBasicMaterial({ color: 0xfde047 });
+                const sun = new THREE.Mesh(sunGeo, sunMat);
+                sun.position.set(0, 15, -28);
+                currentStageGroup.add(sun);
+
+                for (let x of [-26, -16, 16, 26]) {
+                    const colGeo = new THREE.CylinderGeometry(0.9, 0.9, 22, 16);
+                    const colMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.7 });
+                    const col = new THREE.Mesh(colGeo, colMat);
+                    col.position.set(x, 11, -12);
+                    col.castShadow = true;
+                    currentStageGroup.add(col);
+                }
+
+            } else {
+                // ROUND 3: CYBER DATA CENTER
+                scene.background = new THREE.Color(0x022c22);
+                scene.fog = new THREE.FogExp2(0x022c22, 0.022);
+
+                const floorGeo = new THREE.PlaneGeometry(70, 40);
+                const floorMat = new THREE.MeshStandardMaterial({ color: 0x064e3b, roughness: 0.1, metalness: 0.9 });
+                const floor = new THREE.Mesh(floorGeo, floorMat);
+                floor.rotation.x = -Math.PI / 2;
+                floor.receiveShadow = true;
+                currentStageGroup.add(floor);
+
+                const grid = new THREE.GridHelper(70, 35, 0x10b981, 0x059669);
+                grid.position.y = 0.01;
+                currentStageGroup.add(grid);
+
+                for (let x = -24; x <= 24; x += 8) {
+                    const rackGeo = new THREE.BoxGeometry(4.5, 16, 4.5);
+                    const rackMat = new THREE.MeshStandardMaterial({
+                        color: 0x062e24,
+                        emissive: 0x059669,
+                        emissiveIntensity: 0.5
+                    });
+                    const rack = new THREE.Mesh(rackGeo, rackMat);
+                    rack.position.set(x, 8, -14);
+                    currentStageGroup.add(rack);
+                }
+            }
+        }
+
+        // --- PARTICLES ---
+        class Particle3D {
+            constructor(x, y, z, color, vx, vy, vz, size = 0.3) {
+                const geo = new THREE.SphereGeometry(size, 8, 8);
+                const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 1 });
+                this.mesh = new THREE.Mesh(geo, mat);
+                this.mesh.position.set(x, y, z);
+                this.vx = vx;
+                this.vy = vy;
+                this.vz = vz;
+                this.life = 25;
+                this.maxLife = 25;
+                scene.add(this.mesh);
+            }
+            update() {
+                this.mesh.position.x += this.vx;
+                this.mesh.position.y += this.vy;
+                this.mesh.position.z += this.vz;
+                this.life--;
+                this.mesh.material.opacity = this.life / this.maxLife;
+                this.mesh.scale.multiplyScalar(0.93);
+            }
+            destroy() {
+                scene.remove(this.mesh);
+                this.mesh.geometry.dispose();
+                this.mesh.material.dispose();
+            }
+        }
+        let particles3D = [];
+
+        function spawnSparks3D(x, y, z, color, count = 22) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 0.45 + 0.1;
+                particles3D.push(new Particle3D(
+                    x, y, z,
+                    color,
+                    Math.cos(angle) * speed,
+                    (Math.random() - 0.2) * speed,
+                    Math.sin(angle) * speed,
+                    Math.random() * 0.25 + 0.15
+                ));
+            }
+        }
+
+        // --- PROJÉTEIS ---
+        class Projectile3D {
+            constructor(x, y, z, vx, type, owner) {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+                this.vx = vx;
+                this.type = type;
+                this.owner = owner;
+                this.active = true;
+
+                const color = type === 'vscode' ? 0x00d2ff : 0xa371f7;
+                const geo = new THREE.SphereGeometry(0.9, 16, 16);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: color,
+                    emissive: color,
+                    emissiveIntensity: 1.5,
+                    roughness: 0.1
+                });
+                this.mesh = new THREE.Mesh(geo, mat);
+                this.mesh.position.set(x, y, z);
+                scene.add(this.mesh);
+
+                this.light = new THREE.PointLight(color, 2.5, 10);
+                this.mesh.add(this.light);
+            }
+            update() {
+                this.x += this.vx;
+                this.mesh.position.x = this.x;
+
+                const sparkColor = this.type === 'vscode' ? 0x007acc : 0x8957e5;
+                particles3D.push(new Particle3D(
+                    this.x - (this.vx > 0 ? 0.6 : -0.6),
+                    this.y + (Math.random() - 0.5) * 0.6,
+                    this.z,
+                    sparkColor,
+                    -this.vx * 0.2,
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1,
+                    0.2
+                ));
+
+                if (Math.abs(this.x) > 30) {
+                    this.active = false;
+                }
+            }
+            destroy() {
+                scene.remove(this.mesh);
+                this.mesh.geometry.dispose();
+                this.mesh.material.dispose();
+            }
+        }
+        let projectiles3D = [];
+
+        // --- BONECO 3D REALISTA E ANATÔMICO ---
+        class RealisticFighter3D {
+            constructor({ x, suitColor, emblemColor, skinTone = 0xd2a386, magicType, name, isP2 = false }) {
+                this.x = x;
+                this.y = 0;
+                this.z = 0;
+                this.vx = 0;
+                this.vy = 0;
+                this.suitColor = suitColor;
+                this.emblemColor = emblemColor;
+                this.skinTone = skinTone;
+                this.magicType = magicType;
+                this.name = name;
+                this.isP2 = isP2;
+
+                this.health = 100;
+                this.isGrounded = true;
+                this.facingRight = !isP2;
+                this.state = 'idle';
+                this.stateTimer = 0;
+                this.cooldownMagic = 0;
+                this.hasHit = false;
+
+                this.group = new THREE.Group();
+                this.group.position.set(this.x, this.y, this.z);
+                scene.add(this.group);
+
+                this.buildHumanoidBody();
+            }
+
+            buildHumanoidBody() {
+                // Materiais Realistas
+                const skinMat = new THREE.MeshStandardMaterial({
+                    color: this.skinTone,
+                    roughness: 0.55,
+                    metalness: 0.1
+                });
+                const suitMat = new THREE.MeshStandardMaterial({
+                    color: this.suitColor,
+                    roughness: 0.35,
+                    metalness: 0.65
+                });
+                const armorMat = new THREE.MeshStandardMaterial({
+                    color: 0x1e293b,
+                    roughness: 0.2,
+                    metalness: 0.85
+                });
+                const emblemMat = new THREE.MeshStandardMaterial({
+                    color: this.emblemColor,
+                    emissive: this.emblemColor,
+                    emissiveIntensity: 1.2
+                });
+
+                // --- QUADRIL / PELVE ---
+                const pelvisGeo = new THREE.CylinderGeometry(0.7, 0.65, 0.8, 16);
+                this.pelvis = new THREE.Mesh(pelvisGeo, suitMat);
+                this.pelvis.position.y = 3.6;
+                this.pelvis.castShadow = true;
+                this.group.add(this.pelvis);
+
+                // --- TRONCO / PEITORAL ANATÔMICO ---
+                const chestGeo = new THREE.CylinderGeometry(1.15, 0.8, 1.8, 16);
+                this.chest = new THREE.Mesh(chestGeo, suitMat);
+                this.chest.position.y = 1.2;
+                this.chest.castShadow = true;
+                this.pelvis.add(this.chest);
+
+                // Emblema Glow de Tech no Peito (VS Code / GitHub Logo Symbol)
+                const emblemGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.1, 16);
+                this.emblem = new THREE.Mesh(emblemGeo, emblemMat);
+                this.emblem.rotation.x = Math.PI / 2;
+                this.emblem.position.set(0, 0.4, 1.0);
+                this.chest.add(this.emblem);
+
+                // Ombreiras de Armadura
+                const shoulderPadGeo = new THREE.SphereGeometry(0.55, 12, 12);
+                const leftShoulderPad = new THREE.Mesh(shoulderPadGeo, armorMat);
+                leftShoulderPad.position.set(-1.3, 0.7, 0);
+                this.chest.add(leftShoulderPad);
+                const rightShoulderPad = new THREE.Mesh(shoulderPadGeo, armorMat);
+                rightShoulderPad.position.set(1.3, 0.7, 0);
+                this.chest.add(rightShoulderPad);
+
+                // --- PESCOÇO E CABEÇA REALISTA ---
+                const neckGeo = new THREE.CylinderGeometry(0.3, 0.35, 0.5, 12);
+                this.neck = new THREE.Mesh(neckGeo, skinMat);
+                this.neck.position.y = 1.1;
+                this.chest.add(this.neck);
+
+                const headGeo = new THREE.SphereGeometry(0.55, 20, 20);
+                this.head = new THREE.Mesh(headGeo, skinMat);
+                this.head.scale.set(0.9, 1.1, 0.95);
+                this.head.position.y = 0.45;
+                this.head.castShadow = true;
+                this.neck.add(this.head);
+
+                // Cabelo / Capacete Tech
+                const hairGeo = new THREE.SphereGeometry(0.57, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2.2);
+                const hair = new THREE.Mesh(hairGeo, armorMat);
+                hair.position.y = 0.05;
+                this.head.add(hair);
+
+                // Viseira / Óculos Cyberpunk
+                const visorGeo = new THREE.BoxGeometry(0.7, 0.2, 0.25);
+                this.visor = new THREE.Mesh(visorGeo, emblemMat);
+                this.visor.position.set(0, 0.1, 0.45);
+                this.head.add(this.visor);
+
+                // --- BRAÇO ESQUERDO ---
+                this.leftArmPivot = new THREE.Group();
+                this.leftArmPivot.position.set(-1.25, 0.65, 0);
+                this.chest.add(this.leftArmPivot);
+
+                const upperArmGeo = new THREE.CylinderGeometry(0.32, 0.28, 1.1, 12);
+                const leftUpperArm = new THREE.Mesh(upperArmGeo, skinMat);
+                leftUpperArm.position.y = -0.55;
+                leftUpperArm.castShadow = true;
+                this.leftArmPivot.add(leftUpperArm);
+
+                this.leftElbowPivot = new THREE.Group();
+                this.leftElbowPivot.position.set(0, -0.55, 0);
+                leftUpperArm.add(this.leftElbowPivot);
+
+                const forearmGeo = new THREE.CylinderGeometry(0.28, 0.22, 1.1, 12);
+                const leftForearm = new THREE.Mesh(forearmGeo, suitMat);
+                leftForearm.position.y = -0.55;
+                leftForearm.castShadow = true;
+                this.leftElbowPivot.add(leftForearm);
+
+                // Mão
+                const handGeo = new THREE.BoxGeometry(0.25, 0.3, 0.35);
+                const leftHand = new THREE.Mesh(handGeo, skinMat);
+                leftHand.position.y = -0.65;
+                this.leftElbowPivot.add(leftHand);
+
+                // --- BRAÇO DIREITO ---
+                this.rightArmPivot = new THREE.Group();
+                this.rightArmPivot.position.set(1.25, 0.65, 0);
+                this.chest.add(this.rightArmPivot);
+
+                const rightUpperArm = new THREE.Mesh(upperArmGeo, skinMat);
+                rightUpperArm.position.y = -0.55;
+                rightUpperArm.castShadow = true;
+                this.rightArmPivot.add(rightUpperArm);
+
+                this.rightElbowPivot = new THREE.Group();
+                this.rightElbowPivot.position.set(0, -0.55, 0);
+                rightUpperArm.add(this.rightElbowPivot);
+
+                const rightForearm = new THREE.Mesh(forearmGeo, suitMat);
+                rightForearm.position.y = -0.55;
+                rightForearm.castShadow = true;
+                this.rightElbowPivot.add(rightForearm);
+
+                const rightHand = new THREE.Mesh(handGeo, skinMat);
+                rightHand.position.y = -0.65;
+                this.rightElbowPivot.add(rightHand);
+
+                // --- PERNA ESQUERDA ---
+                this.leftLegPivot = new THREE.Group();
+                this.leftLegPivot.position.set(-0.48, -0.3, 0);
+                this.pelvis.add(this.leftLegPivot);
+
+                const thighGeo = new THREE.CylinderGeometry(0.42, 0.34, 1.5, 14);
+                const leftThigh = new THREE.Mesh(thighGeo, suitMat);
+                leftThigh.position.y = -0.75;
+                leftThigh.castShadow = true;
+                this.leftLegPivot.add(leftThigh);
+
+                this.leftKneePivot = new THREE.Group();
+                this.leftKneePivot.position.set(0, -0.75, 0);
+                leftThigh.add(this.leftKneePivot);
+
+                const calfGeo = new THREE.CylinderGeometry(0.34, 0.26, 1.5, 14);
+                const leftCalf = new THREE.Mesh(calfGeo, armorMat);
+                leftCalf.position.y = -0.75;
+                leftCalf.castShadow = true;
+                this.leftKneePivot.add(leftCalf);
+
+                // Pé
+                const footGeo = new THREE.BoxGeometry(0.35, 0.3, 0.75);
+                const leftFoot = new THREE.Mesh(footGeo, armorMat);
+                leftFoot.position.set(0, -0.85, 0.15);
+                this.leftKneePivot.add(leftFoot);
+
+                // --- PERNA DIREITA ---
+                this.rightLegPivot = new THREE.Group();
+                this.rightLegPivot.position.set(0.48, -0.3, 0);
+                this.pelvis.add(this.rightLegPivot);
+
+                const rightThigh = new THREE.Mesh(thighGeo, suitMat);
+                rightThigh.position.y = -0.75;
+                rightThigh.castShadow = true;
+                this.rightLegPivot.add(rightThigh);
+
+                this.rightKneePivot = new THREE.Group();
+                this.rightKneePivot.position.set(0, -0.75, 0);
+                rightThigh.add(this.rightKneePivot);
+
+                const rightCalf = new THREE.Mesh(calfGeo, armorMat);
+                rightCalf.position.y = -0.75;
+                rightCalf.castShadow = true;
+                this.rightKneePivot.add(rightCalf);
+
+                const rightFoot = new THREE.Mesh(footGeo, armorMat);
+                rightFoot.position.set(0, -0.85, 0.15);
+                this.rightKneePivot.add(rightFoot);
+            }
+
+            update(opponent) {
+                if (this.cooldownMagic > 0) this.cooldownMagic--;
+
+                if (this.state === 'idle' || this.state === 'walk') {
+                    this.facingRight = this.x < opponent.x;
+                }
+                this.group.rotation.y = this.facingRight ? Math.PI / 2 : -Math.PI / 2;
+
+                this.vy -= 0.04;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.y <= 0) {
+                    this.y = 0;
+                    this.vy = 0;
+                    this.isGrounded = true;
+                    if (this.state === 'jump') this.state = 'idle';
+                }
+
+                if (this.x < -24) this.x = -24;
+                if (this.x > 24) this.x = 24;
+
+                this.group.position.set(this.x, this.y, this.z);
+
+                if (this.stateTimer > 0) {
+                    this.stateTimer--;
+                    if (this.stateTimer === 0 && this.state !== 'dead') {
+                        this.state = 'idle';
+                    }
+                }
+
+                if ((this.state === 'punch' || this.state === 'kick' || this.state === 'spin') && !this.hasHit) {
+                    const dist = Math.abs(this.x - opponent.x);
+                    if (dist < 3.4 && Math.abs(this.y - opponent.y) < 2.5) {
+                        this.hasHit = true;
+                        let dmg = 9;
+                        if (this.state === 'kick') dmg = 14;
+                        if (this.state === 'spin') dmg = 18;
+                        opponent.takeDamage(dmg, this.facingRight ? 1.6 : -1.6);
+                    }
+                }
+
+                this.animateRealisticPoses();
+            }
+
+            animateRealisticPoses() {
+                const time = Date.now() * 0.008;
+
+                // Reset Poses
+                this.leftArmPivot.rotation.set(0, 0, 0);
+                this.rightArmPivot.rotation.set(0, 0, 0);
+                this.leftElbowPivot.rotation.set(0, 0, 0);
+                this.rightElbowPivot.rotation.set(0, 0, 0);
+                this.leftLegPivot.rotation.set(0, 0, 0);
+                this.rightLegPivot.rotation.set(0, 0, 0);
+                this.leftKneePivot.rotation.set(0, 0, 0);
+                this.rightKneePivot.rotation.set(0, 0, 0);
+                this.chest.rotation.set(0, 0, 0);
+                this.pelvis.position.y = 3.6;
+
+                if (this.state === 'idle') {
+                    // Stance de Combate Realista
+                    this.pelvis.position.y = 3.6 + Math.sin(time * 1.5) * 0.06;
+                    this.leftArmPivot.rotation.x = -0.8 + Math.sin(time) * 0.05;
+                    this.leftArmPivot.rotation.z = 0.3;
+                    this.leftElbowPivot.rotation.x = -1.1;
+
+                    this.rightArmPivot.rotation.x = -0.7 - Math.sin(time) * 0.05;
+                    this.rightArmPivot.rotation.z = -0.3;
+                    this.rightElbowPivot.rotation.x = -1.2;
+
+                    this.leftLegPivot.rotation.x = 0.2;
+                    this.rightLegPivot.rotation.x = -0.2;
+                } else if (this.state === 'walk') {
+                    // Andar de Luta
+                    this.leftLegPivot.rotation.x = Math.sin(time * 2.5) * 0.5;
+                    this.leftKneePivot.rotation.x = Math.max(0, -Math.sin(time * 2.5) * 0.4);
+                    this.rightLegPivot.rotation.x = -Math.sin(time * 2.5) * 0.5;
+                    this.rightKneePivot.rotation.x = Math.max(0, Math.sin(time * 2.5) * 0.4);
+
+                    this.leftArmPivot.rotation.x = -Math.sin(time * 2.5) * 0.4 - 0.5;
+                    this.rightArmPivot.rotation.x = Math.sin(time * 2.5) * 0.4 - 0.5;
+                } else if (this.state === 'punch') {
+                    // Jab / Soco Direto Realista
+                    this.rightArmPivot.rotation.x = -Math.PI / 2.1;
+                    this.rightArmPivot.rotation.y = 0.3;
+                    this.rightElbowPivot.rotation.x = -0.1;
+                    this.chest.rotation.y = 0.5;
+                } else if (this.state === 'kick') {
+                    // Roundhouse Kick Realista
+                    this.rightLegPivot.rotation.x = -Math.PI / 2.0;
+                    this.rightLegPivot.rotation.z = -0.4;
+                    this.rightKneePivot.rotation.x = -0.2;
+                    this.chest.rotation.z = -0.3;
+                } else if (this.state === 'spin') {
+                    // Tatsumaki Hurricane Kick 360
+                    this.group.rotation.y += time * 3.5;
+                    this.leftLegPivot.rotation.z = 1.35;
+                    this.rightLegPivot.rotation.z = -1.35;
+                    this.leftArmPivot.rotation.z = 1.5;
+                    this.rightArmPivot.rotation.z = -1.5;
+                } else if (this.state === 'magic') {
+                    // Hadouken / Energy Blast Pose
+                    this.leftArmPivot.rotation.x = -Math.PI / 2.3;
+                    this.rightArmPivot.rotation.x = -Math.PI / 2.3;
+                    this.leftElbowPivot.rotation.x = -0.3;
+                    this.rightElbowPivot.rotation.x = -0.3;
+                    this.chest.rotation.x = 0.2;
+                } else if (this.state === 'block') {
+                    // Guarda Alta de Boxe
+                    this.leftArmPivot.rotation.x = -Math.PI / 1.8;
+                    this.leftArmPivot.rotation.z = -0.4;
+                    this.rightArmPivot.rotation.x = -Math.PI / 1.8;
+                    this.rightArmPivot.rotation.z = 0.4;
+                    this.leftElbowPivot.rotation.x = -1.5;
+                    this.rightElbowPivot.rotation.x = -1.5;
+                } else if (this.state === 'hit') {
+                    // Recuo por Golpe
+                    this.chest.rotation.x = 0.45;
+                    this.head.rotation.x = -0.35;
+                } else if (this.state === 'dead') {
+                    // K.O. Tumble
+                    this.group.rotation.z = Math.PI / 2;
+                    this.pelvis.position.y = 0.9;
+                }
+            }
+
+            jump() {
+                if (this.isGrounded && this.canAct()) {
+                    this.vy = 0.72;
+                    this.state = 'jump';
+                    this.isGrounded = false;
+                }
+            }
+
+            punch() {
+                if (this.canAct()) {
+                    this.state = 'punch';
+                    this.stateTimer = 16;
+                    this.hasHit = false;
+                }
+            }
+
+            kick() {
+                if (this.canAct()) {
+                    this.state = 'kick';
+                    this.stateTimer = 20;
+                    this.hasHit = false;
+                }
+            }
+
+            spin() {
+                if (this.canAct()) {
+                    this.state = 'spin';
+                    this.stateTimer = 30;
+                    this.hasHit = false;
+                    this.vy = 0.28;
+                    sfx.playSpinSound();
+                }
+            }
+
+            castMagic() {
+                if (this.canAct() && this.cooldownMagic === 0) {
+                    this.state = 'magic';
+                    this.stateTimer = 26;
+                    this.cooldownMagic = 50;
+
+                    if (this.magicType === 'vscode') {
+                        sfx.speak("VS Code!", 1.2, 1.1);
+                        sfx.playMagicSound('vscode');
+                    } else {
+                        sfx.speak("GitHub!", 0.9, 1.1);
+                        sfx.playMagicSound('github');
+                    }
+
+                    setTimeout(() => {
+                        if (this.health <= 0) return;
+                        const projX = this.facingRight ? this.x + 2.2 : this.x - 2.2;
+                        const projVx = this.facingRight ? 0.48 : -0.48;
+                        projectiles3D.push(new Projectile3D(projX, 3.8, this.z, projVx, this.magicType, this));
+                    }, 180);
+                }
+            }
+
+            canAct() {
+                return (this.state === 'idle' || this.state === 'walk') && this.health > 0;
+            }
+
+            takeDamage(amount, knockback = 0) {
+                if (this.state === 'dead') return;
+
+                if (this.state === 'block') {
+                    amount *= 0.2;
+                    sfx.playHit();
+                    spawnSparks3D(this.x, 3.8, this.z, 0xffffff, 10);
+                } else {
+                    this.state = 'hit';
+                    this.stateTimer = 16;
+                    sfx.playHit();
+                    const sparkColor = this.magicType === 'vscode' ? 0x00d2ff : 0xa371f7;
+                    spawnSparks3D(this.x, 3.8, this.z, sparkColor, 24);
+                }
+
+                this.health = Math.max(0, this.health - amount);
+                this.x += knockback;
+
+                if (this.health <= 0) {
+                    this.state = 'dead';
+                }
+            }
+        }
+
+        // Instanciação dos Lutadores 3D Realistas
+        let player1 = new RealisticFighter3D({
+            x: -8,
+            suitColor: 0x0284c7,
+            emblemColor: 0x38bdf8,
+            skinTone: 0xe5b899,
+            magicType: 'vscode',
+            name: 'VS Code Fighter',
+            isP2: false
+        });
+
+        let player2 = new RealisticFighter3D({
+            x: 8,
+            suitColor: 0x4c1d95,
+            emblemColor: 0xc084fc,
+            skinTone: 0xd2a386,
+            magicType: 'github',
+            name: 'GitHub Fighter',
+            isP2: true
+        });
+
+        // --- JOYSTICKS VIRTUAIS ---
+        class VirtualJoystick {
+            constructor(baseId, stickId, onMove) {
+                this.base = document.getElementById(baseId);
+                this.stick = document.getElementById(stickId);
+                this.onMove = onMove;
+                this.active = false;
+                this.touchId = null;
+
+                const startHandler = (e) => {
+                    const touch = e.changedTouches ? e.changedTouches[0] : e;
+                    this.active = true;
+                    this.touchId = touch.identifier;
+                    this.updatePos(touch);
+                };
+
+                const moveHandler = (e) => {
+                    if (!this.active) return;
+                    let touch = e;
+                    if (e.changedTouches) {
+                        for (let t of e.changedTouches) {
+                            if (t.identifier === this.touchId) { touch = t; break; }
+                        }
+                    }
+                    this.updatePos(touch);
+                };
+
+                const endHandler = () => {
+                    this.active = false;
+                    this.stick.style.transform = `translate(0px, 0px)`;
+                    this.onMove(0, 0);
+                };
+
+                this.base.addEventListener('touchstart', startHandler, { passive: false });
+                window.addEventListener('touchmove', moveHandler, { passive: false });
+                window.addEventListener('touchend', endHandler);
+                window.addEventListener('touchcancel', endHandler);
+
+                this.base.addEventListener('mousedown', startHandler);
+                window.addEventListener('mousemove', moveHandler);
+                window.addEventListener('mouseup', endHandler);
+            }
+
+            updatePos(e) {
+                const rect = this.base.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                let deltaX = e.clientX - centerX;
+                let deltaY = e.clientY - centerY;
+                const dist = Math.hypot(deltaX, deltaY);
+                const maxDist = 30;
+
+                if (dist > maxDist) {
+                    deltaX = (deltaX / dist) * maxDist;
+                    deltaY = (deltaY / dist) * maxDist;
+                }
+
+                this.stick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                this.onMove(deltaX / maxDist, deltaY / maxDist);
+            }
+        }
+
+        let p1JoyState = { dx: 0, dy: 0 };
+        let p2JoyState = { dx: 0, dy: 0 };
+
+        new VirtualJoystick('joy-base-p1', 'joy-stick-p1', (dx, dy) => {
+            p1JoyState = { dx, dy };
+            if (dy < -0.5) player1.jump();
+            if (dy > 0.5 && player1.isGrounded) player1.state = 'block';
+        });
+
+        new VirtualJoystick('joy-base-p2', 'joy-stick-p2', (dx, dy) => {
+            p2JoyState = { dx, dy };
+            if (dy < -0.5) player2.jump();
+            if (dy > 0.5 && player2.isGrounded) player2.state = 'block';
+        });
+
+        const bindBtn = (id, action) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); action(); });
+            btn.addEventListener('mousedown', (e) => { e.preventDefault(); action(); });
+        };
+
+        bindBtn('btn-p1-punch', () => player1.punch());
+        bindBtn('btn-p1-kick', () => player1.kick());
+        bindBtn('btn-p1-spin', () => player1.spin());
+        bindBtn('btn-p1-magic', () => player1.castMagic());
+
+        bindBtn('btn-p2-punch', () => player2.punch());
+        bindBtn('btn-p2-kick', () => player2.kick());
+        bindBtn('btn-p2-spin', () => player2.spin());
+        bindBtn('btn-p2-magic', () => player2.castMagic());
+
+        // --- IA CONTROLLER ---
+        function updateAI(ai, opponent) {
+            if (ai.health <= 0 || ai.state === 'hit' || ai.state === 'dead') return;
+
+            const dist = Math.abs(ai.x - opponent.x);
+            const rand = Math.random();
+
+            if (dist > 10) {
+                if (rand < 0.03 && ai.cooldownMagic === 0) {
+                    ai.castMagic();
+                } else {
+                    ai.vx = ai.facingRight ? 0.16 : -0.16;
+                    ai.state = 'walk';
+                }
+            } else if (dist > 4) {
+                if (rand < 0.02 && ai.cooldownMagic === 0) {
+                    ai.castMagic();
+                } else if (rand < 0.03) {
+                    ai.spin();
+                } else {
+                    ai.vx = ai.facingRight ? 0.13 : -0.13;
+                    ai.state = 'walk';
+                }
+            } else {
+                ai.vx = 0;
+                if (rand < 0.08) ai.punch();
+                else if (rand < 0.14) ai.kick();
+                else if (rand < 0.18) ai.spin();
+                else if (rand < 0.22) ai.state = 'block';
+                else ai.state = 'idle';
+            }
+        }
+
+        // --- INPUT HARVESTING ---
+        function handleInputs() {
+            if (player1.health > 0 && player1.state !== 'hit') {
+                if (player1.state !== 'spin') player1.vx = 0;
+
+                if (keys['a'] || keys['A'] || p1JoyState.dx < -0.3) {
+                    player1.vx = -0.19;
+                    if (player1.isGrounded && player1.state !== 'spin') player1.state = 'walk';
+                } else if (keys['d'] || keys['D'] || p1JoyState.dx > 0.3) {
+                    player1.vx = 0.19;
+                    if (player1.isGrounded && player1.state !== 'spin') player1.state = 'walk';
+                } else if (player1.isGrounded && player1.state !== 'punch' && player1.state !== 'kick' && player1.state !== 'spin' && player1.state !== 'magic') {
+                    player1.state = 'idle';
+                }
+
+                if (keys['s'] || keys['S']) {
+                    if (player1.isGrounded) player1.state = 'block';
+                }
+
+                if (keys['w'] || keys['W']) player1.jump();
+                if (keys['f'] || keys['F']) player1.punch();
+                if (keys['g'] || keys['G']) player1.kick();
+                if (keys['h'] || keys['H']) player1.spin();
+                if (keys['j'] || keys['J']) player1.castMagic();
+            }
+
+            if (gameMode === 'P2') {
+                if (player2.health > 0 && player2.state !== 'hit') {
+                    if (player2.state !== 'spin') player2.vx = 0;
+
+                    if (keys['ArrowLeft'] || p2JoyState.dx < -0.3) {
+                        player2.vx = -0.19;
+                        if (player2.isGrounded && player2.state !== 'spin') player2.state = 'walk';
+                    } else if (keys['ArrowRight'] || p2JoyState.dx > 0.3) {
+                        player2.vx = 0.19;
+                        if (player2.isGrounded && player2.state !== 'spin') player2.state = 'walk';
+                    } else if (player2.isGrounded && player2.state !== 'punch' && player2.state !== 'kick' && player2.state !== 'spin' && player2.state !== 'magic') {
+                        player2.state = 'idle';
+                    }
+
+                    if (keys['ArrowDown']) {
+                        if (player2.isGrounded) player2.state = 'block';
+                    }
+
+                    if (keys['ArrowUp']) player2.jump();
+                    if (keys['n'] || keys['N']) player2.punch();
+                    if (keys['m'] || keys['M']) player2.kick();
+                    if (keys[',']) player2.spin();
+                    if (keys['k'] || keys['K']) player2.castMagic();
+                }
+            } else if (gameMode === 'AI') {
+                updateAI(player2, player1);
+            }
+        }
+
+        // --- CÂMERA DINÂMICA CINEMÁTICA ---
+        function updateCamera() {
+            const midX = (player1.x + player2.x) / 2;
+            const dist = Math.abs(player1.x - player2.x);
+
+            camera.position.x = midX * 0.6;
+            camera.position.z = Math.max(18, 14 + dist * 0.5);
+            camera.lookAt(midX * 0.6, 3.8, 0);
+        }
+
+        // --- LOOP PRINCIPAL DO JOGO ---
+        function animate() {
+            if (!gameRunning) return;
+
+            handleInputs();
+
+            player1.update(player2);
+            player2.update(player1);
+
+            updateCamera();
+
+            for (let i = projectiles3D.length - 1; i >= 0; i--) {
+                const p = projectiles3D[i];
+                p.update();
+
+                const target = p.owner === player1 ? player2 : player1;
+                if (Math.abs(p.x - target.x) < 1.7 && Math.abs(p.y - (target.y + 3.2)) < 2.2) {
+                    target.takeDamage(16, p.vx > 0 ? 1.8 : -1.8);
+                    p.active = false;
+                }
+
+                if (!p.active) {
+                    p.destroy();
+                    projectiles3D.splice(i, 1);
+                }
+            }
+
+            for (let i = particles3D.length - 1; i >= 0; i--) {
+                particles3D[i].update();
+                if (particles3D[i].life <= 0) {
+                    particles3D[i].destroy();
+                    particles3D.splice(i, 1);
+                }
+            }
+
+            p1HealthEl.style.width = `${player1.health}%`;
+            p2HealthEl.style.width = `${player2.health}%`;
+            p1EnergyEl.style.width = `${Math.max(0, 100 - player1.cooldownMagic * 2)}%`;
+            p2EnergyEl.style.width = `${Math.max(0, 100 - player2.cooldownMagic * 2)}%`;
+
+            renderer.render(scene, camera);
+
+            if (player1.health <= 0 || player2.health <= 0 || roundTime <= 0) {
+                endRound();
+                return;
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        function startRound() {
+            gameRunning = true;
+            roundTime = 60;
+            timerEl.textContent = roundTime;
+            roundTextEl.textContent = `ROUND ${currentRound}`;
+
+            buildStage(currentRound);
+
+            player1.health = 100;
+            player1.x = -8;
+            player1.y = 0;
+            player1.state = 'idle';
+
+            player2.health = 100;
+            player2.x = 8;
+            player2.y = 0;
+            player2.state = 'idle';
+
+            projectiles3D.forEach(p => p.destroy());
+            projectiles3D = [];
+            particles3D.forEach(p => p.destroy());
+            particles3D = [];
+
+            announcerTextEl.textContent = `ROUND ${currentRound}`;
+            announcerEl.classList.remove('hidden');
+
+            setTimeout(() => {
+                announcerTextEl.textContent = "FIGHT!";
+                sfx.speak(`Round ${currentRound}! Fight!`, 1.0, 1.2);
+                setTimeout(() => {
+                    announcerEl.classList.add('hidden');
+                }, 1000);
+            }, 1000);
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!gameRunning) return;
+                roundTime--;
+                timerEl.textContent = roundTime;
+                if (roundTime <= 0) endRound();
+            }, 1000);
+
+            requestAnimationFrame(animate);
+        }
+
+        function startGame(mode) {
+            sfx.init();
+            gameMode = mode;
+            currentRound = 1;
+            p1RoundsWon = 0;
+            p2RoundsWon = 0;
+            p1WinsEl.textContent = "";
+            p2WinsEl.textContent = "";
+            overlay.classList.add('hidden');
+            startRound();
+        }
+
+        function endRound() {
+            gameRunning = false;
+            clearInterval(timerInterval);
+
+            let roundWinner = null;
+            if (player1.health > player2.health) {
+                roundWinner = 'p1';
+                p1RoundsWon++;
+            } else if (player2.health > player1.health) {
+                roundWinner = 'p2';
+                p2RoundsWon++;
+            }
+
+            p1WinsEl.textContent = "★".repeat(p1RoundsWon);
+            p2WinsEl.textContent = "★".repeat(p2RoundsWon);
+
+            announcerEl.classList.remove('hidden');
+            if (roundWinner === 'p1') {
+                announcerTextEl.textContent = "P1 WINS!";
+                sfx.speak("Player 1 Wins!", 1.1, 1.1);
+            } else if (roundWinner === 'p2') {
+                announcerTextEl.textContent = "P2 WINS!";
+                sfx.speak("Player 2 Wins!", 1.0, 1.1);
+            } else {
+                announcerTextEl.textContent = "DRAW!";
+                sfx.speak("Draw!", 1.0, 1.1);
+            }
+
+            setTimeout(() => {
+                announcerEl.classList.add('hidden');
+                if (p1RoundsWon >= 2 || p2RoundsWon >= 2 || currentRound >= 3) {
+                    overlay.classList.remove('hidden');
+                    const title = document.getElementById('overlay-title');
+                    if (p1RoundsWon > p2RoundsWon) {
+                        title.textContent = "VITÓRIA FINAL: VS CODE!";
+                    } else if (p2RoundsWon > p1RoundsWon) {
+                        title.textContent = "VITÓRIA FINAL: GITHUB!";
+                    } else {
+                        title.textContent = "EMPATE DUPLO!";
+                    }
+                } else {
+                    currentRound++;
+                    startRound();
+                }
+            }, 2500);
+        }
+
+        document.getElementById('btn-vs-ai').addEventListener('click', () => startGame('AI'));
+        document.getElementById('btn-vs-p2').addEventListener('click', () => startGame('P2'));
+
+        buildStage(1);
+        renderer.render(scene, camera);
+    </script>
+</body>
+</html>
+```
